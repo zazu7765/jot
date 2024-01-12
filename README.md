@@ -12,6 +12,9 @@ planned features:
   - Search based on attributes
 
 ## Filters:
-TBA
+- Date
+- Content partial-matching
 ## Attributes:
-TBA
+- Date
+- Tag (unique identifier)
+- Content

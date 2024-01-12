@@ -17,17 +17,25 @@ enum Commands {
         tag: Option<String>,
     },
     List {
+        #[arg(short, long)]
+        date: Option<String>,
+
         page: Option<u32>,
     },
     Search {
         #[arg(short, long)]
         date: Option<String>,
         #[arg(short, long)]
-        tag: Option<String>,
         content: Option<Vec<String>>,
+
+        tag: Option<String>,
     },
-    Edit {},
-    Delete {},
+    Edit {
+        tag: String,
+    },
+    Delete {
+        tag: String,
+    },
 
 }
 
@@ -35,24 +43,30 @@ fn main() {
     let cli = CLI::parse();
     match &cli.command {
         Some(Commands::Add { name, tag }) => {
+            let tag = tag.as_deref().unwrap_or("randomhashstring");
             let data = name.join(" ");
-            println!("{:?}", data);
+            println!("Added entry: {} with tag {}", data, tag);
         }
         Some(Commands::List { page }) => {
-            let page = page.unwrap_or_default();
+            let _page = page.unwrap_or_default();
         }
         Some(Commands::Search { date, tag, content }) => {
             let date = date.as_deref().unwrap_or("");
             let tag = tag.as_deref().unwrap_or("");
-            match (date.is_empty(), tag.is_empty()) {
-                (false, false) => println!("Filter by date and tag"),
-                (false, true) => println!("Filter by date NOT tag"),
-                (true, false) => println!("Filter by tag NOT date"),
-                _ => println!("Filter by content only"),
+            let data = content.as_deref().unwrap_or(&["".to_string()]).join(" ");
+            match (date.is_empty(), data.is_empty()) {
+                (false, false) => println!("Search by date and content:\n{}\n{}", date, data),
+                (false, true) => println!("Search by date and not content:\n{}", date),
+                (true, false) => println!("Search by content and not date:\n{}", data),
+                _ => println!("Filter by tag only {}", tag),
             }
         }
-        Some(Commands::Edit {}) => {}
-        Some(Commands::Delete {}) => {}
+        Some(Commands::Edit { tag }) => {
+            println!("Editing Entry with Tag {}", tag);
+        }
+        Some(Commands::Delete { tag }) => {
+            println!("Deleting Entry with Tag {}", tag);
+        }
         None => { println!("No Command Given!") }
     }
 }

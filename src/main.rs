@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use serde::{Deserialize, Serialize};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -39,13 +40,26 @@ enum Commands {
 
 }
 
+#[derive(Serialize, Deserialize)]
+struct Note {
+    tag: String,
+    content: String,
+    date: String,
+}
+
 fn main() {
     let cli = CLI::parse();
     match &cli.command {
         Some(Commands::Add { name, tag }) => {
-            let tag = tag.as_deref().unwrap_or("randomhashstring");
+            let tag = tag.as_deref().unwrap_or("randomhashstring").to_string();
             let data = name.join(" ");
-            println!("Added entry: {} with tag {}", data, tag);
+            let date = chrono::Local::now().format("%d/%m/%y").to_string();
+            let note = Note {
+                tag,
+                content: data,
+                date,
+            };
+            println!("Added entry: {}", serde_json::to_string(&note).unwrap());
         }
         Some(Commands::List { page, date }) => {
             let _page = page.unwrap_or_default();

@@ -47,8 +47,9 @@ fn main() {
             let data = name.join(" ");
             println!("Added entry: {} with tag {}", data, tag);
         }
-        Some(Commands::List { page }) => {
+        Some(Commands::List { page, date }) => {
             let _page = page.unwrap_or_default();
+            let _date = date.as_deref().unwrap_or("");
         }
         Some(Commands::Search { date, tag, content }) => {
             let date = date.as_deref().unwrap_or("");

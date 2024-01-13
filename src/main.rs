@@ -59,7 +59,9 @@ fn main() {
                 content: data,
                 date,
             };
-            println!("Added entry: {}", serde_json::to_string(&note).unwrap());
+            if cli.debug {
+                println!("Added entry: {}", serde_json::to_string(&note).unwrap());
+            };
         }
         Some(Commands::List { page, date }) => {
             let _page = page.unwrap_or_default();
@@ -77,10 +79,14 @@ fn main() {
             }
         }
         Some(Commands::Edit { tag }) => {
-            println!("Editing Entry with Tag {}", tag);
+            if cli.debug {
+                println!("Editing Entry with Tag {}", tag);
+            }
         }
         Some(Commands::Delete { tag }) => {
-            println!("Deleting Entry with Tag {}", tag);
+            if cli.debug {
+                println!("Deleting Entry with Tag {}", tag);
+            }
         }
         None => { println!("No Command Given!") }
     }

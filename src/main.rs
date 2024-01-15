@@ -1,4 +1,6 @@
 use clap::{Parser, Subcommand};
+use rand::distributions::{Alphanumeric, DistString};
+use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 
 #[derive(Parser, Debug)]
@@ -51,7 +53,9 @@ fn main() {
     let cli = CLI::parse();
     match &cli.command {
         Some(Commands::Add { name, tag }) => {
-            let tag = tag.as_deref().unwrap_or("randomhashstring").to_string();
+            let tag = tag.to_owned().unwrap_or(
+                Alphanumeric.sample_string(&mut thread_rng(), 5).to_lowercase()
+            );
             let data = name.join(" ");
             let date = chrono::Local::now().format("%d/%m/%y").to_string();
             let note = Note {

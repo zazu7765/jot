@@ -1,4 +1,5 @@
 use std::fs::{create_dir_all, File};
+use std::io::{Read, Seek};
 
 use clap::{Parser, Subcommand};
 use rand::distributions::{Alphanumeric, DistString};
@@ -7,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
-struct CLI {
+struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
     #[arg(short, long)]
@@ -44,7 +45,7 @@ enum Commands {
 
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 struct Note {
     tag: String,
     content: String,
@@ -52,13 +53,16 @@ struct Note {
 }
 
 fn main() {
-    let mut config = dirs::home_dir().unwrap();
-    config.push(".config");
-    create_dir_all(&config).expect("Could not create directories!");
-    config.push("journal");
-    config.set_extension("json");
-    File::options().read(true).write(true).create_new(true).open(&config).expect("Could not create file!");
-    let cli = CLI::parse();
+    let mut config_path = dirs::home_dir().unwrap();
+    config_path.push(".config");
+    create_dir_all(&config_path).expect("Could not create directories!");
+    config_path.push("journal");
+    config_path.set_extension("json");
+    let mut db = File::options().read(true).write(true).create(true).open(&config_path).expect("Could not create file!");
+    let mut data = String::new();
+    db.read_to_string(&mut data).expect("Unable to Load Data!");
+    let mut json: Vec<Note> = serde_json::from_str(&data).unwrap_or_else(|_e| Vec::new());
+    let cli = Cli::parse();
     match &cli.command {
         Some(Commands::Add { name, tag }) => {
             let tag = tag.to_owned().unwrap_or(
@@ -71,13 +75,20 @@ fn main() {
                 content: data,
                 date,
             };
+            json.push(note);
+            db.set_len(0).expect("Couldn't reset file");
+            db.rewind().unwrap();
+            serde_json::to_writer(db, &json).expect("Couldn't write json to file!");
             if cli.debug {
-                println!("Added entry: {}", serde_json::to_string(&note).unwrap());
+                // println!("Added entry: {}", serde_json::to_string(&note).unwrap());
             };
         }
         Some(Commands::List { page, date }) => {
             let _page = page.unwrap_or_default();
             let _date = date.as_deref().unwrap_or("");
+            for item in json {
+                println!("Tag: {}\tContent: {}",item.tag, item.content);
+            }
         }
         Some(Commands::Search { date, tag, content }) => {
             let date = date.as_deref().unwrap_or("");

@@ -1,5 +1,5 @@
 use std::fs::{create_dir_all, File};
-use dirs;
+
 use clap::{Parser, Subcommand};
 use rand::distributions::{Alphanumeric, DistString};
 use rand::thread_rng;

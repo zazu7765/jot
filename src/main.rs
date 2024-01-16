@@ -1,3 +1,5 @@
+use std::fs::{create_dir_all, File};
+use dirs;
 use clap::{Parser, Subcommand};
 use rand::distributions::{Alphanumeric, DistString};
 use rand::thread_rng;
@@ -50,6 +52,12 @@ struct Note {
 }
 
 fn main() {
+    let mut config = dirs::home_dir().unwrap();
+    config.push(".config");
+    create_dir_all(&config).expect("Could not create directories!");
+    config.push("journal");
+    config.set_extension("json");
+    File::options().read(true).write(true).create_new(true).open(&config).expect("Could not create file!");
     let cli = CLI::parse();
     match &cli.command {
         Some(Commands::Add { name, tag }) => {

@@ -1,6 +1,7 @@
 use std::fs::{create_dir_all, File};
-use std::io::{Read, Seek};
+use std::io::{Read, Seek, stdin};
 
+use chrono::DateTime;
 use clap::{Parser, Subcommand};
 use rand::distributions::{Alphanumeric, DistString};
 use rand::thread_rng;
@@ -75,19 +76,25 @@ fn main() {
                 content: data,
                 date,
             };
-            json.push(note);
-            db.set_len(0).expect("Couldn't reset file");
-            db.rewind().unwrap();
-            serde_json::to_writer(db, &json).expect("Couldn't write json to file!");
             if cli.debug {
-                // println!("Added entry: {}", serde_json::to_string(&note).unwrap());
+                println!("Added entry: {}", serde_json::to_string(&note).unwrap());
             };
+            json.push(note);
+            write_over_config(&mut db, &mut json);
         }
         Some(Commands::List { page, date }) => {
             let _page = page.unwrap_or_default();
-            let _date = date.as_deref().unwrap_or("");
-            for item in json {
-                println!("Tag: {}\tContent: {}",item.tag, item.content);
+            let date = date.as_deref().unwrap_or("");
+            println!("{}", &date);
+            let result: Vec<&Note> = match date {
+                "" => json.iter().collect(),
+                _ => json.iter().filter(|a|
+                    DateTime::parse_from_str(a.date.as_str(), "%d/%m/%y")
+                        == DateTime::parse_from_str(date, "%d/%m/%y")).collect()
+            };
+
+            for item in result {
+                println!("Tag: {}\tContent: {}\tDate: {}", item.tag, item.content, item.date);
             }
         }
         Some(Commands::Search { date, tag, content }) => {
@@ -102,6 +109,14 @@ fn main() {
             }
         }
         Some(Commands::Edit { tag }) => {
+            if let Some(note) = json.iter_mut().find(|x| x.tag == tag.as_str()){
+                let mut new_content = String::new();
+                println!("Please enter your new content: ");
+                stdin().read_line(&mut new_content).expect("Unable to read user input!");
+                note.content = new_content.trim().to_string();
+                write_over_config(&mut db, &mut json);
+            }
+
             if cli.debug {
                 println!("Editing Entry with Tag {}", tag);
             }
@@ -113,4 +128,10 @@ fn main() {
         }
         None => { println!("No Command Given!") }
     }
+}
+
+fn write_over_config(db: &mut File, json: &mut Vec<Note>) {
+    db.set_len(0).expect("Couldn't reset file");
+    db.rewind().unwrap();
+    serde_json::to_writer(db, &json).expect("Couldn't write json to file!");
 }

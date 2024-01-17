@@ -90,31 +90,7 @@ fn main() {
             let start_date = from.as_deref().unwrap_or("");
             let end_date = to.as_deref().unwrap_or("");
             println!("{}", &start_date);
-            let result: Vec<&Note> = match (start_date, end_date) {
-                // both vars empty
-                ("", "") =>
-                    json.iter().collect(),
-                // FROM not empty
-                (_, "") =>
-                    json.iter().filter(|a|
-                        NaiveDate::parse_from_str(a.date.as_str(), "%d/%m/%y")
-                            == NaiveDate::parse_from_str(start_date, "%d/%m/%y")).collect(),
-                // TO not empty
-                ("", _) =>
-                    json.iter().filter(|a|
-                        NaiveDate::parse_from_str(a.date.as_str(), "%d/%m/%y")
-                            == NaiveDate::parse_from_str(end_date, "%d/%m/%y")).collect(),
-                // both FROM and TO
-                (_, _) =>
-                    json.iter().filter(|a| {
-                        let d1 = NaiveDate::parse_from_str(a.date.as_str(), "%d/%m/%y");
-                        let end = NaiveDate::parse_from_str(end_date, "%d/%m/%y");
-                        let start = NaiveDate::parse_from_str(end_date, "%d/%m/%y");
-                        d1 < start && d1 < end
-                    }
-                    ).collect(),
-            };
-
+            let result = filter_by_date(&json, start_date, end_date);
             for item in result {
                 println!("Tag: {}\tContent: {}\tDate: {}", item.tag, item.content, item.date);
             }
@@ -152,8 +128,30 @@ fn main() {
     }
 }
 
-fn write_over_config(db: &mut File, json: &mut Vec<Note>) {
+fn write_over_config(db: &mut File, notes: &mut Vec<Note>) {
     db.set_len(0).expect("Couldn't reset file");
     db.rewind().unwrap();
-    serde_json::to_writer(db, &json).expect("Couldn't write json to file!");
+    serde_json::to_writer(db, &notes).expect("Couldn't write json to file!");
+}
+
+fn filter_by_date<'a>(notes: &'a Vec<Note>, start_date: &str, end_date: &str) -> Vec<&'a Note>{
+    notes
+        .iter()
+        .filter(|note|
+        if let Ok(note_date) = NaiveDate::parse_from_str(&note.date, "%d/%m/%y"){
+            let start = NaiveDate::parse_from_str(start_date, "%d/%m/%y").ok();
+            let end = NaiveDate::parse_from_str(end_date, "%d/%m/%y").ok();
+            match (start, end) {
+                (Some(start), Some(end)) => note_date >= start && note_date <= end,
+                (Some(start), None) => note_date >= start,
+                (None, Some(end)) => note_date <= end,
+                (None, None) => true,
+            }
+        }
+            else{
+                false
+            }
+        )
+        .collect()
+
 }

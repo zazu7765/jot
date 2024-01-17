@@ -1,5 +1,5 @@
-# journal rust app
-simple rust journal app
+# jot
+simple rust quick notes app
 
 planned features:
 - CRUD entries

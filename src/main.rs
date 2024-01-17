@@ -1,7 +1,7 @@
 use std::fs::{create_dir_all, File};
 use std::io::{Read, Seek, stdin};
 
-use chrono::DateTime;
+use chrono::NaiveDate;
 use clap::{Parser, Subcommand};
 use rand::distributions::{Alphanumeric, DistString};
 use rand::thread_rng;
@@ -25,7 +25,10 @@ enum Commands {
     },
     List {
         #[arg(short, long)]
-        date: Option<String>,
+        from: Option<String>,
+
+        #[arg(short, long)]
+        to: Option<String>,
 
         page: Option<u32>,
     },
@@ -82,15 +85,34 @@ fn main() {
             json.push(note);
             write_over_config(&mut db, &mut json);
         }
-        Some(Commands::List { page, date }) => {
+        Some(Commands::List { page, from, to }) => {
             let _page = page.unwrap_or_default();
-            let date = date.as_deref().unwrap_or("");
-            println!("{}", &date);
-            let result: Vec<&Note> = match date {
-                "" => json.iter().collect(),
-                _ => json.iter().filter(|a|
-                    DateTime::parse_from_str(a.date.as_str(), "%d/%m/%y")
-                        == DateTime::parse_from_str(date, "%d/%m/%y")).collect()
+            let start_date = from.as_deref().unwrap_or("");
+            let end_date = to.as_deref().unwrap_or("");
+            println!("{}", &start_date);
+            let result: Vec<&Note> = match (start_date, end_date) {
+                // both vars empty
+                ("", "") =>
+                    json.iter().collect(),
+                // FROM not empty
+                (_, "") =>
+                    json.iter().filter(|a|
+                        NaiveDate::parse_from_str(a.date.as_str(), "%d/%m/%y")
+                            == NaiveDate::parse_from_str(start_date, "%d/%m/%y")).collect(),
+                // TO not empty
+                ("", _) =>
+                    json.iter().filter(|a|
+                        NaiveDate::parse_from_str(a.date.as_str(), "%d/%m/%y")
+                            == NaiveDate::parse_from_str(end_date, "%d/%m/%y")).collect(),
+                // both FROM and TO
+                (_, _) =>
+                    json.iter().filter(|a| {
+                        let d1 = NaiveDate::parse_from_str(a.date.as_str(), "%d/%m/%y");
+                        let end = NaiveDate::parse_from_str(end_date, "%d/%m/%y");
+                        let start = NaiveDate::parse_from_str(end_date, "%d/%m/%y");
+                        d1 < start && d1 < end
+                    }
+                    ).collect(),
             };
 
             for item in result {
@@ -109,7 +131,7 @@ fn main() {
             }
         }
         Some(Commands::Edit { tag }) => {
-            if let Some(note) = json.iter_mut().find(|x| x.tag == tag.as_str()){
+            if let Some(note) = json.iter_mut().find(|x| x.tag == tag.as_str()) {
                 let mut new_content = String::new();
                 println!("Please enter your new content: ");
                 stdin().read_line(&mut new_content).expect("Unable to read user input!");

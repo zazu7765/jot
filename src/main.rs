@@ -45,7 +45,9 @@ enum Commands {
         tag: String,
     },
     Delete {
-        tag: String,
+        tag: Option<String>,
+        #[arg(long)]
+        all: bool,
     },
 
 }
@@ -127,9 +129,21 @@ fn main() {
                 println!("Editing Entry with Tag {}", tag);
             }
         }
-        Some(Commands::Delete { tag }) => {
+        Some(Commands::Delete { tag, all }) => {
+            if let Some(tag) = tag{
+                if let Some(index) = json.iter().position(|x| x.tag == tag.as_str())
+                {
+                    json.remove(index);
+                    write_over_config(&mut db, &mut json);
+                }
+
+            }
+            else if *all{
+               json.clear();
+                write_over_config(&mut db, &mut json);
+            }
             if cli.debug {
-                println!("Deleting Entry with Tag {}", tag);
+                println!("Deleting Entry with Tag {}", tag.clone().unwrap_or_default());
             }
         }
         None => { println!("No Command Given!") }

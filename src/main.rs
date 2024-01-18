@@ -1,11 +1,12 @@
 use std::fs::{create_dir_all, File};
 use std::io::{Read, Seek, stdin};
 
-use chrono::NaiveDate;
 use clap::{Parser, Subcommand};
 use rand::distributions::{Alphanumeric, DistString};
 use rand::thread_rng;
 use serde::{Deserialize, Serialize};
+
+mod filters;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -24,13 +25,13 @@ enum Commands {
         tag: Option<String>,
     },
     List {
+        arg: Vec<String>,
         #[arg(short, long)]
         from: Option<String>,
 
         #[arg(short, long)]
         to: Option<String>,
 
-        page: Option<u32>,
     },
     Search {
         #[arg(short, long)]
@@ -85,13 +86,20 @@ fn main() {
             json.push(note);
             write_over_config(&mut db, &mut json);
         }
-        Some(Commands::List { page, from, to }) => {
-            let _page = page.unwrap_or_default();
-            let start_date = from.as_deref().unwrap_or("");
-            let end_date = to.as_deref().unwrap_or("");
-            println!("{}", &start_date);
-            let result = filter_by_date(&json, start_date, end_date);
-            for item in result {
+        Some(Commands::List { arg, from, to }) => {
+            let args = arg.join(" ");
+            match args.as_str(){
+                "date" => {
+                    let start_date = from.as_deref().unwrap_or("");
+                    let end_date = to.as_deref().unwrap_or("");
+                    filters::filter_by_date(&mut json, start_date, end_date);
+                },
+                "tag" => {
+                    filters::filter_by_tag(&mut json);
+                },
+                _ => (),
+            }
+            for item in json {
                 println!("Tag: {}\tContent: {}\tDate: {}", item.tag, item.content, item.date);
             }
         }
@@ -132,26 +140,4 @@ fn write_over_config(db: &mut File, notes: &mut Vec<Note>) {
     db.set_len(0).expect("Couldn't reset file");
     db.rewind().unwrap();
     serde_json::to_writer(db, &notes).expect("Couldn't write json to file!");
-}
-
-fn filter_by_date<'a>(notes: &'a Vec<Note>, start_date: &str, end_date: &str) -> Vec<&'a Note>{
-    notes
-        .iter()
-        .filter(|note|
-        if let Ok(note_date) = NaiveDate::parse_from_str(&note.date, "%d/%m/%y"){
-            let start = NaiveDate::parse_from_str(start_date, "%d/%m/%y").ok();
-            let end = NaiveDate::parse_from_str(end_date, "%d/%m/%y").ok();
-            match (start, end) {
-                (Some(start), Some(end)) => note_date >= start && note_date <= end,
-                (Some(start), None) => note_date >= start,
-                (None, Some(end)) => note_date <= end,
-                (None, None) => true,
-            }
-        }
-            else{
-                false
-            }
-        )
-        .collect()
-
 }
